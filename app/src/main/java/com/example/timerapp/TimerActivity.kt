@@ -1,15 +1,18 @@
 package com.example.timerapp
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.example.timerapp.databinding.ActivityTimerBinding
@@ -19,6 +22,7 @@ class TimerActivity : AppCompatActivity() {
     private lateinit var binding: ActivityTimerBinding
     private lateinit var countDownTimer: CountDownTimer
     private val CHANNEL_ID = "timer_notification_channel"
+    private val NOTIFICATION_PERMISSION_REQUEST_CODE = 1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,11 +66,23 @@ class TimerActivity : AppCompatActivity() {
             val notificationManager: NotificationManager =
                 getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
-            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 0)
         }
     }
 
     private fun sendNotification() {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                NOTIFICATION_PERMISSION_REQUEST_CODE
+            )
+            return
+        }
+
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
@@ -84,6 +100,21 @@ class TimerActivity : AppCompatActivity() {
 
         with(NotificationManagerCompat.from(this)) {
             notify(0, builder.build())
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
+            if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
+                sendNotification()
+            } else {
+                Toast.makeText(this, "Notification permission denied", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }
